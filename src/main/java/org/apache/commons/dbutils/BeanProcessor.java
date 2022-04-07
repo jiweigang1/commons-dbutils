@@ -194,9 +194,10 @@ public class BeanProcessor {
         if (!rs.next()) {
             return results;
         }
-
+        // 获取 Bean 的属性描述
         final PropertyDescriptor[] props = this.propertyDescriptors(type);
         final ResultSetMetaData rsmd = rs.getMetaData();
+        //查询的列 index 和  属性 index 映射
         final int[] columnToProperty = this.mapColumnsToProperties(rsmd, props);
 
         do {
@@ -219,8 +220,9 @@ public class BeanProcessor {
     private <T> T createBean(final ResultSet rs, final Class<T> type,
                              final PropertyDescriptor[] props, final int[] columnToProperty)
     throws SQLException {
-
+        //创建实体对象
         final T bean = this.newInstance(type);
+        //把查出出来的值赋值到对象上
         return populateBean(rs, bean, props, columnToProperty);
     }
 
@@ -254,25 +256,29 @@ public class BeanProcessor {
     private <T> T populateBean(final ResultSet rs, final T bean,
             final PropertyDescriptor[] props, final int[] columnToProperty)
             throws SQLException {
-
+        
+        //遍历所有的映射好的属性
         for (int i = 1; i < columnToProperty.length; i++) {
-
+            // 没有映射成功的，直接跳过
             if (columnToProperty[i] == PROPERTY_NOT_FOUND) {
                 continue;
             }
-
+            //获取对象的属性
             final PropertyDescriptor prop = props[columnToProperty[i]];
+            //获取对象的属性类型
             final Class<?> propType = prop.getPropertyType();
 
             Object value = null;
             if (propType != null) {
+                
+                //通过对象的属性类型来 从resultset 中获取具体的值
                 value = this.processColumn(rs, i, propType);
-
+                //如果获取结果为 null ，基本类型的设置为 defalut值，比如 int 类型 设置为 0
                 if (value == null && propType.isPrimitive()) {
                     value = primitiveDefaults.get(propType);
                 }
             }
-
+            //把属性设置到 bean 当中
             this.callSetter(bean, prop, value);
         }
 
@@ -289,7 +295,7 @@ public class BeanProcessor {
      */
     private void callSetter(final Object target, final PropertyDescriptor prop, Object value)
             throws SQLException {
-
+        //获取set方法
         final Method setter = getWriteMethod(target, prop, value);
 
         if (setter == null || setter.getParameterTypes().length != 1) {
@@ -312,6 +318,7 @@ public class BeanProcessor {
                   + value.getClass().getName() + " to " + firstParam.getName());
                   // value cannot be null here because isCompatibleType allows null
             }
+            //直接调用set方法设置值，
             setter.invoke(target, value);
 
         } catch (final IllegalArgumentException | IllegalAccessException | InvocationTargetException e) {
@@ -508,11 +515,11 @@ public class BeanProcessor {
         throws SQLException {
 
         Object retval = rs.getObject(index);
-
+        //如果是基本类型，并且获取到的值为 null 直接返回，使用defalut 值
         if ( !propType.isPrimitive() && retval == null ) {
             return null;
         }
-
+        //便利所有的handler 查询出 匹配类型  handler 进行获取值，比如 propType 为int ，调用的时候获取 getInt
         for (final ColumnHandler handler : columnHandlers) {
             if (handler.match(propType)) {
                 retval = handler.apply(rs, index);
