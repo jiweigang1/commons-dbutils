@@ -194,7 +194,7 @@ public class BeanProcessor {
         if (!rs.next()) {
             return results;
         }
-        // 获取 Bean 的属性描述
+        // 获取 Bean 的属性描述，使用的是 JavaBean
         final PropertyDescriptor[] props = this.propertyDescriptors(type);
         final ResultSetMetaData rsmd = rs.getMetaData();
         //查询的列 index 和  属性 index 映射
@@ -235,6 +235,7 @@ public class BeanProcessor {
      * @throws SQLException if a database error occurs.
      */
     public <T> T populateBean(final ResultSet rs, final T bean) throws SQLException {
+        //使用的是 JavaBean 
         final PropertyDescriptor[] props = this.propertyDescriptors(bean.getClass());
         final ResultSetMetaData rsmd = rs.getMetaData();
         final int[] columnToProperty = this.mapColumnsToProperties(rsmd, props);
@@ -304,6 +305,7 @@ public class BeanProcessor {
 
         try {
             final Class<?> firstParam = setter.getParameterTypes()[0];
+            //获取的到值有些不一定和属性一致，比如 枚举，date 转 java.sql.Date 
             for (final PropertyHandler handler : propertyHandlers) {
                 if (handler.match(firstParam, value)) {
                     value = handler.apply(firstParam, value);
@@ -312,6 +314,7 @@ public class BeanProcessor {
             }
 
             // Don't call setter if the value object isn't the right type
+            //如果类型不匹配直接抛出异常
             if (!this.isCompatibleType(value, firstParam)) {
               throw new SQLException(
                   "Cannot set " + prop.getName() + ": incompatible types, cannot convert "
